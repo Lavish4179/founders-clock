@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'unsafe-inline'; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#101318">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Ironjaw · Day Counter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23101318'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='%23ff8a3d' font-family='monospace' font-weight='bold'%3EIJ%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --iron-deep:#101318;      /* forge-room dark */
+    --iron-panel:#181d24;     /* steel panel */
+    --iron-seam:#242b35;      /* panel seam / borders */
+    --steel-text:#dfe4ea;     /* brushed steel text */
+    --steel-dim:#7d8794;      /* stamped label grey */
+    --ember:#ff8a3d;          /* molten iron */
+    --ember-hot:#ffc07a;      /* white-hot edge */
+    --disp:'Chakra Petch', 'Arial Narrow', sans-serif;
+    --mono:'IBM Plex Mono', 'Courier New', monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--iron-deep);
+    color:var(--steel-text);
+    font-family:var(--mono);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
+    min-height:100vh;
+    background-image:
+      radial-gradient(ellipse 120% 55% at 50% -10%, rgba(255,138,61,.06), transparent 60%),
+      repeating-linear-gradient(0deg, transparent 0 3px, rgba(255,255,255,.008) 3px 4px);
+  }
+  .wrap{width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px;flex:1;}
+
+  /* ---------- header plate ---------- */
+  header{
+    display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:1px solid var(--iron-seam);
+    padding-bottom:12px;
+  }
+  .brand{
+    font-family:var(--disp);
+    font-weight:700;
+    font-size:22px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+  }
+  .brand span{color:var(--ember);}
+  .tag{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--steel-dim);}
+
+  /* ---------- odometer ---------- */
+  .counter-plate{
+    background:var(--iron-panel);
+    border:1px solid var(--iron-seam);
+    border-radius:10px;
+    padding:26px 16px 22px;
+    text-align:center;
+    position:relative;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.03), 0 8px 24px rgba(0,0,0,.35);
+  }
+  .counter-plate::before, .counter-plate::after{
+    content:'';position:absolute;width:6px;height:6px;border-radius:50%;
+    background:var(--iron-seam);top:10px;
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset;
+  }
+  .counter-plate::before{left:10px;}
+  .counter-plate::after{right:10px;}
+  .counter-label{
+    font-size:10px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--steel-dim);margin-bottom:14px;
+  }
+  .odometer{
+    display:flex;justify-content:center;gap:6px;
+  }
+  .digit{
+    width:52px;height:76px;
+    background:linear-gradient(180deg,#0b0e12 0%, #14181f 45%, #14181f 55%, #0b0e12 100%);
+    border:1px solid var(--iron-seam);
+    border-radius:6px;
+    overflow:hidden;
+    position:relative;
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.6);
+  }
+  .digit::after{ /* wheel axle line */
+    content:'';position:absolute;left:0;right:0;top:50%;height:1px;
+    background:rgba(0,0,0,.55);
+  }
+  .reel{
+    position:absolute;left:0;width:100%;
+    transition:transform 2.2s cubic-bezier(.16,.84,.28,1);
+  }
+  .reel div{
+    height:76px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--disp);font-weight:600;font-size:44px;
+    color:var(--ember);
+    text-shadow:0 0 14px rgba(255,138,61,.35);
+  }
+  .unit{
+    margin-top:12px;font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--steel-dim);
+  }
+  .day-note{margin-top:6px;font-size:12px;color:var(--steel-text);}
+  .day-note strong{color:var(--ember-hot);font-weight:600;}
+
+  /* ---------- breakdown ---------- */
+  .grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  }
+  .cell{
+    background:var(--iron-panel);
+    border:1px solid var(--iron-seam);
+    border-radius:8px;
+    padding:12px 8px;
+    text-align:center;
+  }
+  .cell b{
+    display:block;font-family:var(--disp);font-weight:600;font-size:22px;color:var(--steel-text);
+  }
+  .cell span{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--steel-dim);}
+
+  /* ---------- milestones ---------- */
+  .panel{
+    background:var(--iron-panel);
+    border:1px solid var(--iron-seam);
+    border-radius:10px;
+    padding:16px;
+  }
+  .panel h2{
+    font-family:var(--disp);font-size:12px;font-weight:600;
+    letter-spacing:.24em;text-transform:uppercase;color:var(--steel-dim);
+    margin-bottom:12px;
+  }
+  .ms-next{
+    display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;
+  }
+  .ms-next .target{font-family:var(--disp);font-size:20px;font-weight:600;color:var(--steel-text);}
+  .ms-next .left{font-size:12px;color:var(--ember);}
+  .bar{
+    height:10px;border-radius:5px;background:#0b0e12;
+    border:1px solid var(--iron-seam);overflow:hidden;
+  }
+  .bar i{
+    display:block;height:100%;
+    background:linear-gradient(90deg, #b8481a, var(--ember) 70%, var(--ember-hot));
+    width:0%;
+    transition:width 2.2s cubic-bezier(.16,.84,.28,1);
+    box-shadow:0 0 10px rgba(255,138,61,.4);
+  }
+  .ms-list{margin-top:14px;display:flex;flex-direction:column;gap:7px;}
+  .ms-row{
+    display:flex;justify-content:space-between;
+    font-size:12px;padding:6px 8px;border-radius:5px;
+  }
+  .ms-row.done{color:var(--steel-dim);}
+  .ms-row.done .name::before{content:'■ ';color:var(--ember);}
+  .ms-row.todo .name::before{content:'□ ';color:var(--steel-dim);}
+  .ms-row.done .val{text-decoration:line-through;text-decoration-color:rgba(255,138,61,.5);}
+  .ms-row.next-up{background:rgba(255,138,61,.07);border:1px solid rgba(255,138,61,.25);color:var(--steel-text);}
+
+  /* ---------- footer / settings ---------- */
+  footer{
+    margin-top:auto;padding-top:14px;text-align:center;
+    display:flex;flex-direction:column;gap:8px;align-items:center;
+  }
+  .since{font-size:11px;color:var(--steel-dim);letter-spacing:.05em;}
+  .edit-btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+    background:none;border:1px solid var(--iron-seam);color:var(--steel-dim);
+    padding:8px 16px;border-radius:6px;cursor:pointer;
+  }
+  .edit-btn:active{border-color:var(--ember);color:var(--ember);}
+  .edit-btn:focus-visible{outline:2px solid var(--ember);outline-offset:2px;}
+  .editor{display:none;gap:8px;align-items:center;}
+  .editor.open{display:flex;}
+  .editor input{
+    background:#0b0e12;border:1px solid var(--iron-seam);color:var(--steel-text);
+    font-family:var(--mono);padding:8px;border-radius:6px;font-size:13px;
+    color-scheme:dark;
+  }
+  .editor button{
+    background:var(--ember);border:none;color:#1a0d04;font-family:var(--disp);
+    font-weight:600;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    padding:9px 14px;border-radius:6px;cursor:pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .reel, .bar i{transition:none !important;}
+  }
+  @media (max-width:380px){
+    .digit{width:44px;height:64px;}
+    .reel div{height:64px;font-size:36px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">IRON<span>JAW</span></div>
+    <div class="tag">Founder's Clock</div>
+  </header>
+
+  <section class="counter-plate" aria-live="polite">
+    <div class="counter-label">Days Building</div>
+    <div class="odometer" id="odometer"></div>
+    <div class="unit">Days</div>
+    <div class="day-note" id="dayNote"></div>
+  </section>
+
+  <section class="grid" id="breakdown"></section>
+
+  <section class="panel">
+    <h2>Milestones</h2>
+    <div class="ms-next">
+      <span class="target" id="msTarget"></span>
+      <span class="left" id="msLeft"></span>
+    </div>
+    <div class="bar"><i id="msBar"></i></div>
+    <div class="ms-list" id="msList"></div>
+  </section>
+
+  <footer>
+    <div class="since" id="sinceLine"></div>
+    <button class="edit-btn" id="editToggle">Change start date</button>
+    <div class="editor" id="editor">
+      <input type="date" id="dateInput" aria-label="Start date">
+      <button id="saveDate">Set</button>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var DEFAULT_START = '2025-12-02'; // the day Ironjaw became real
+  var MILESTONES = [
+    {d:100,   label:'100 days'},
+    {d:214,   label:'The July 4th check-in'},
+    {d:365,   label:'One year'},
+    {d:500,   label:'500 days'},
+    {d:730,   label:'Two years'},
+    {d:1000,  label:'1,000 days'},
+    {d:1826,  label:'Five years'},
+    {d:2500,  label:'2,500 days'},
+    {d:3652,  label:'Ten years'},
+    {d:5000,  label:'5,000 days'},
+    {d:7500,  label:'7,500 days'},
+    {d:10000, label:'10,000 days'}
+  ];
+
+  function isValidStart(s){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    var y = +s.slice(0,4);
+    return y >= 1970 && y <= 2100;
+  }
+  function loadStart(){
+    try{
+      var s = localStorage.getItem('ij_start');
+      if(s && isValidStart(s)) return s;
+    }catch(e){}
+    return DEFAULT_START;
+  }
+  function saveStart(s){
+    if(!isValidStart(s)) return;
+    try{ localStorage.setItem('ij_start', s); }catch(e){}
+  }
+
+  function toLocalMidnight(iso){
+    var p = iso.split('-');
+    return new Date(+p[0], +p[1]-1, +p[2]);
+  }
+  function todayMidnight(){
+    var n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate());
+  }
+  function daysBetween(a,b){
+    return Math.round((b - a) / 86400000);
+  }
+  function fmt(n){ return n.toLocaleString('en-US'); }
+  function fmtDate(d){
+    return d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  }
+
+  /* --- odometer --- */
+  function digitHeight(){
+    return window.innerWidth <= 380 ? 64 : 76;
+  }
+  function buildOdometer(count){
+    var el = document.getElementById('odometer');
+    el.innerHTML = '';
+    var str = String(count);
+    var pad = Math.max(str.length, 3);
+    str = str.padStart(pad,'0');
+    var h = digitHeight();
+    for(var i=0;i<str.length;i++){
+      var cell = document.createElement('div');
+      cell.className = 'digit';
+      var reel = document.createElement('div');
+      reel.className = 'reel';
+      for(var n=0;n<=9;n++){
+        var f = document.createElement('div');
+        f.textContent = n;
+        reel.appendChild(f);
+      }
+      cell.appendChild(reel);
+      el.appendChild(cell);
+      (function(reel, target){
+        requestAnimationFrame(function(){
+          requestAnimationFrame(function(){
+            reel.style.transform = 'translateY(' + (-target*h) + 'px)';
+          });
+        });
+      })(reel, +str[i]);
+    }
+    el.setAttribute('aria-label', fmt(count) + ' days building');
+  }
+
+  /* --- breakdown: calendar years / months / days --- */
+  function calendarBreakdown(start, today){
+    var y = today.getFullYear() - start.getFullYear();
+    var m = today.getMonth() - start.getMonth();
+    var d = today.getDate() - start.getDate();
+    if(d < 0){
+      m--;
+      var prevMonthDays = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+      d += prevMonthDays;
+    }
+    if(m < 0){ y--; m += 12; }
+    return {y:y, m:m, d:d};
+  }
+
+  function render(){
+    var startIso = loadStart();
+    var start = toLocalMidnight(startIso);
+    var today = todayMidnight();
+    var count = Math.max(0, daysBetween(start, today));
+
+    buildOdometer(count);
+
+    var note = document.getElementById('dayNote');
+    note.textContent = 'Today is ';
+    var strong = document.createElement('strong');
+    strong.textContent = 'Day ' + fmt(count + 1);
+    note.appendChild(strong);
+    note.appendChild(document.createTextNode(' of the build.'));
+
+    var bd = calendarBreakdown(start, today);
+    var weeks = Math.floor(count / 7);
+    var cells = [
+      [String(bd.y), 'Years'], [String(bd.m), 'Months'], [String(bd.d), 'Days'],
+      [fmt(weeks), 'Weeks'], [fmt(count * 24), 'Hours'],
+      [fmt(10000 - count > 0 ? 10000 - count : 0), 'To 10K']
+    ];
+    var grid = document.getElementById('breakdown');
+    grid.textContent = '';
+    cells.forEach(function(c){
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      var b = document.createElement('b');
+      b.textContent = c[0];
+      var sp = document.createElement('span');
+      sp.textContent = c[1];
+      cell.appendChild(b); cell.appendChild(sp);
+      grid.appendChild(cell);
+    });
+
+    // next milestone
+    var next = null;
+    for(var i=0;i<MILESTONES.length;i++){
+      if(MILESTONES[i].d > count){ next = MILESTONES[i]; break; }
+    }
+    var prevD = 0;
+    if(next){
+      var idx = MILESTONES.indexOf(next);
+      prevD = idx > 0 ? MILESTONES[idx-1].d : 0;
+      var span = next.d - prevD;
+      var into = count - prevD;
+      var pct = Math.max(0, Math.min(100, (into/span)*100));
+      document.getElementById('msTarget').textContent = next.label;
+      document.getElementById('msLeft').textContent = fmt(next.d - count) + ' days out';
+      requestAnimationFrame(function(){
+        requestAnimationFrame(function(){
+          document.getElementById('msBar').style.width = pct + '%';
+        });
+      });
+    }else{
+      document.getElementById('msTarget').textContent = 'Beyond 10,000';
+      document.getElementById('msLeft').textContent = 'Uncharted';
+      document.getElementById('msBar').style.width = '100%';
+    }
+
+    // list
+    var list = document.getElementById('msList');
+    list.innerHTML = '';
+    MILESTONES.forEach(function(ms){
+      var row = document.createElement('div');
+      var done = count >= ms.d;
+      row.className = 'ms-row ' + (done ? 'done' : 'todo') + (next && ms.d === next.d ? ' next-up' : '');
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'name';
+      nameSpan.textContent = ms.label;
+      var valSpan = document.createElement('span');
+      valSpan.className = 'val';
+      valSpan.textContent = fmt(ms.d);
+      row.appendChild(nameSpan); row.appendChild(valSpan);
+      list.appendChild(row);
+    });
+
+    document.getElementById('sinceLine').textContent =
+      'Building since ' + fmtDate(start);
+    document.getElementById('dateInput').value = startIso;
+  }
+
+  /* --- editor --- */
+  document.getElementById('editToggle').addEventListener('click', function(){
+    document.getElementById('editor').classList.toggle('open');
+  });
+  document.getElementById('saveDate').addEventListener('click', function(){
+    var v = document.getElementById('dateInput').value;
+    if(v){
+      saveStart(v);
+      document.getElementById('editor').classList.remove('open');
+      render();
+    }
+  });
+
+  // re-render when the app is reopened after midnight
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden) render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
